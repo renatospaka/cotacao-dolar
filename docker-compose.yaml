@@ -1,0 +1,12 @@
+version: "3.5"
+
+services:
+  app:
+    build: .
+    container_name: app_cotacao_dolar
+    volumes:
+      - .:/go/src/
+    ports:
+      - 8080:8000
+    extra_hosts:
+      - "host.docker.internal:172.17.0.1"
