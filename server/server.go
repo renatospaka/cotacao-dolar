@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type USDBRL struct {
@@ -50,6 +51,8 @@ func getDolarRateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	time.Sleep(500 * time.Millisecond)
 	
 	w.WriteHeader(http.StatusOK)
 	var bid BID

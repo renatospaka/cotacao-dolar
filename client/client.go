@@ -3,21 +3,32 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"time"
 )
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 100 * time.Millisecond)
 	defer cancel()
 
-	_, err := getDolarRate(ctx)
-	if err != nil {
-		panic(err)
-	}
+	go func() {
+		_, err := getDolarRate(ctx)
+		if err != nil {
+			panic(err)
+		}
+	}()
 
+	select {
+	case <-time.After(100 * time.Millisecond):
+		log.Println("Status: ", http.StatusRequestTimeout)
+		log.Println("Request com tempo esgotado")
+
+	case <-ctx.Done():
+		log.Println("Status: ", http.StatusBadRequest)
+		log.Println("Request cancelado pelo cliente")
+	}
 }
 
 func getDolarRate(ctx context.Context) (exchangeRate float32, err error) {
@@ -35,7 +46,7 @@ func getDolarRate(ctx context.Context) (exchangeRate float32, err error) {
 	}
 	defer rs.Body.Close()
 
-	body, err := ioutil.ReadAll(rs.Body)
+	body, err := io.ReadAll(rs.Body)
 	if err != nil {
 		return
 	}
@@ -46,6 +57,6 @@ func getDolarRate(ctx context.Context) (exchangeRate float32, err error) {
 	return 
 }
 
-func saveRateToText(exchangeRate float32) (err error) {
-	return err
-}
+// func saveRateToText(exchangeRate float32) (err error) {
+// 	return err
+// }
