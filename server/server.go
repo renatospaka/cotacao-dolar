@@ -14,21 +14,21 @@ type USDBRL struct {
 	USDBRL cotacao
 }
 type cotacao struct {
-	Code      string  `json:"code"`
-	Codein    string  `json:"code-in"`
-	Name      string  `json:"nae"`
-	High      string `json:"high-value"`
-	Low       string `json:"low-value"`
-	VarBid    string `json:"var-bid"`
-	PctChange string `json:"pct-change"`
+	Code      string `json:"code"`
+	Codein    string `json:"codeIn"`
+	Name      string `json:"name"`
+	High      string `json:"highValue"`
+	Low       string `json:"lowValue"`
+	VarBid    string `json:"varBid"`
+	PctChange string `json:"pctChange"`
 	BID       string `json:"bid"`
 	ASK       string `json:"ask"`
-	timestamp string  `json:"-"`
-	CreatedAt string  `json:"created-at"`
+	Timestamp string `json:",omitempty"`
+	CreatedAt string `json:"createdAt"`
 }
 
 type BID struct {
-	BID 	float32 `json:"bid"`
+	BID float32 `json:"bid"`
 }
 
 func main() {
@@ -46,31 +46,31 @@ func getDolarRateHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	defer log.Println("Request finalizado")
 
+	select {
+	case <-time.After(200 * time.Millisecond):
+		w.WriteHeader(http.StatusRequestTimeout)
+		w.Write([]byte("Request com tempo esgotado\n"))
+
+	case <-ctx.Done():
+		log.Println("Request cancelado pelo cliente")
+		// w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "Request cancelado pelo cliente", http.StatusBadRequest)
+	}
+
 	cotacao, err := getDolarRate(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	time.Sleep(500 * time.Millisecond)
-	
+	time.Sleep(1500 * time.Millisecond)
+
 	w.WriteHeader(http.StatusOK)
 	var bid BID
 	value, _ := strconv.ParseFloat(cotacao.USDBRL.BID, 32)
 	bid.BID = float32(value)
 	log.Println("BID:", bid)
 	json.NewEncoder(w).Encode(bid)
-
-	// select {
-	// case <-time.After(10 * time.Second):
-	// 	w.WriteHeader(http.StatusRequestTimeout)
-	// 	w.Write([]byte("Request com tempo esgotado\n"))
-
-	// case <-ctx.Done():
-	// 	log.Println("Request cancelado pelo cliente")
-	// 	w.WriteHeader(http.StatusBadRequest)
-	// 	// http.Error(w, "Request cancelado pelo cliente", http.StatusRequestTimeout)
-	// }
 }
 
 func getDolarRate(ctx context.Context) (cotacao *USDBRL, err error) {

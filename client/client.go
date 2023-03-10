@@ -14,14 +14,15 @@ func main() {
 	defer cancel()
 
 	go func() {
-		_, err := getDolarRate(ctx)
+		exchangeRate, err := getDolarRate(ctx)
 		if err != nil {
 			panic(err)
 		}
+		log.Println("exchangeRate:", exchangeRate)
 	}()
 
 	select {
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(300 * time.Millisecond):
 		log.Println("Status: ", http.StatusRequestTimeout)
 		log.Println("Request com tempo esgotado")
 
@@ -31,31 +32,37 @@ func main() {
 	}
 }
 
-func getDolarRate(ctx context.Context) (exchangeRate float32, err error) {
-	exchangeRate = 0.0;
-	err = nil
 
+func getDolarRate(ctx context.Context) (exchangeRate float32, err error) {
 	r, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:8080", nil)
 	if err != nil {
-		return 0.0, err
+		return 
 	}
-
+	log.Println("PASSOU: http.NewRequestWithContext")
+	
 	rs, err := http.DefaultClient.Do(r)
 	if err != nil {
-		return 0.0, err
+		return 
 	}
 	defer rs.Body.Close()
-
+	log.Println("PASSOU: http.DefaultClient.Do")
+	
 	body, err := io.ReadAll(rs.Body)
 	if err != nil {
 		return
 	}
-	log.Println("Cotação:", body)
+	log.Println("PASSOU: io.ReadAll")
+	log.Println("Cotação (body):", body)
 
-	var cotacao interface{}
+	var cotacao any
 	err = json.Unmarshal(body, &cotacao)
+	if err != nil {
+		return
+	}
+	log.Println("Cotação:", cotacao)
 	return 
 }
+
 
 // func saveRateToText(exchangeRate float32) (err error) {
 // 	return err
