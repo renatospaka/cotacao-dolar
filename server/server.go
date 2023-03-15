@@ -6,8 +6,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
+)
+
+const (
+	HTTP_TIMEOUT = 200 * time.Millisecond
 )
 
 type USDBRL struct {
@@ -27,10 +30,6 @@ type cotacao struct {
 	CreatedAt string `json:"createdAt"`
 }
 
-type BID struct {
-	BID float32 `json:"bid"`
-}
-
 func main() {
 	http.HandleFunc("/cotacao", getDolarRateHandler)
 	http.ListenAndServe(":8080", nil)
@@ -39,58 +38,56 @@ func main() {
 func getDolarRateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/cotacao" {
 		http.Error(w, "route not found", http.StatusNotFound)
-		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 
 	ctx := r.Context()
-	defer log.Println("Request finalizado")
-
-	select {
-	case <-time.After(200 * time.Millisecond):
-		w.WriteHeader(http.StatusRequestTimeout)
-		w.Write([]byte("Request com tempo esgotado\n"))
-
-	case <-ctx.Done():
-		log.Println("Request cancelado pelo cliente")
-		// w.WriteHeader(http.StatusBadRequest)
-		http.Error(w, "Request cancelado pelo cliente", http.StatusBadRequest)
-	}
-
 	cotacao, err := getDolarRate(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	log.Println("Cotação:", cotacao)
 
-	time.Sleep(1500 * time.Millisecond)
-
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	var bid BID
-	value, _ := strconv.ParseFloat(cotacao.USDBRL.BID, 32)
-	bid.BID = float32(value)
-	log.Println("BID:", bid)
-	json.NewEncoder(w).Encode(bid)
+	w.Write([]byte(cotacao.USDBRL.BID))
+
+	select {
+	case <-time.After(HTTP_TIMEOUT):
+		log.Println("Request com tempo esgotado")
+		// w.WriteHeader(http.StatusRequestTimeout)
+		// w.Write([]byte("Request com tempo esgotado\n"))
+
+	case <-ctx.Done():
+		log.Println("Request cancelado pelo cliente")
+		// http.Error(w, "Request cancelado pelo cliente", http.StatusBadRequest)
+	}
 }
 
-func getDolarRate(ctx context.Context) (cotacao *USDBRL, err error) {
+
+func getDolarRate(ctx context.Context) (*USDBRL, error) {
+	// "jump of the cat"
+	ctx, cancel := context.WithTimeout(ctx, HTTP_TIMEOUT)
+	defer cancel()
+
 	r, err := http.NewRequestWithContext(ctx, "GET", "https://economia.awesomeapi.com.br/json/last/USD-BRL", nil)
 	if err != nil {
-		log.Println("Parece que não achou", err.Error())
-		return
+		return nil, err
 	}
 
 	rs, err := http.DefaultClient.Do(r)
 	if err != nil {
-		return
+		return nil, err
 	}
 	defer rs.Body.Close()
 
 	body, err := ioutil.ReadAll(rs.Body)
+	log.Println("Body:", body)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	err = json.Unmarshal(body, &cotacao)
-	return
+	var cotacao USDBRL
+	_ = json.Unmarshal(body, &cotacao)
+	return &cotacao, nil
 }

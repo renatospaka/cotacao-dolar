@@ -2,68 +2,64 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 100 * time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 500 * time.Millisecond)
 	defer cancel()
 
-	go func() {
-		exchangeRate, err := getDolarRate(ctx)
-		if err != nil {
-			panic(err)
-		}
-		log.Println("exchangeRate:", exchangeRate)
-	}()
+	exchangeRate, err := getDolarRate(ctx)
+	if err != nil {
+		panic(err)
+	}
+	log.Println("exchangeRate:", exchangeRate)
 
-	select {
-	case <-time.After(300 * time.Millisecond):
-		log.Println("Status: ", http.StatusRequestTimeout)
-		log.Println("Request com tempo esgotado")
-
-	case <-ctx.Done():
-		log.Println("Status: ", http.StatusBadRequest)
-		log.Println("Request cancelado pelo cliente")
+	err = saveRateToText(exchangeRate)
+	if err != nil {
+		panic(err)
 	}
 }
 
 
-func getDolarRate(ctx context.Context) (exchangeRate float32, err error) {
-	r, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:8080", nil)
+func getDolarRate(ctx context.Context) (float32, error) {
+	r, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:8080/cotacao", nil)
 	if err != nil {
-		return 
+		return 0.0, err
 	}
-	log.Println("PASSOU: http.NewRequestWithContext")
 	
 	rs, err := http.DefaultClient.Do(r)
 	if err != nil {
-		return 
+		return 0.0, err 
 	}
 	defer rs.Body.Close()
-	log.Println("PASSOU: http.DefaultClient.Do")
 	
-	body, err := io.ReadAll(rs.Body)
+	dolarRate, err := io.ReadAll(rs.Body)
 	if err != nil {
-		return
+		return 0.0, err
 	}
-	log.Println("PASSOU: io.ReadAll")
-	log.Println("Cotação (body):", body)
 
-	var cotacao any
-	err = json.Unmarshal(body, &cotacao)
-	if err != nil {
-		return
-	}
-	log.Println("Cotação:", cotacao)
-	return 
+	value, _ := strconv.ParseFloat(string(dolarRate[:]), 32)
+	exchangeRate := float32(value)
+	return exchangeRate, nil
 }
 
 
-// func saveRateToText(exchangeRate float32) (err error) {
-// 	return err
-// }
+func saveRateToText(exchangeRate float32) error {
+	rate := strconv.FormatFloat(float64(exchangeRate), 'f', 2, 32) 
+	currentRate := "Dólar: {" + rate + "}"
+
+	file, err := os.Create("cotacao.txt")
+	if err != nil {
+		return err
+	}
+
+	io.Copy(file, strings.NewReader(currentRate))
+	return nil
+}
