@@ -46,7 +46,6 @@ func getDolarRateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Println("Cotação:", cotacao)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -54,19 +53,15 @@ func getDolarRateHandler(w http.ResponseWriter, r *http.Request) {
 
 	select {
 	case <-time.After(HTTP_TIMEOUT):
-		log.Println("Request com tempo esgotado")
-		// w.WriteHeader(http.StatusRequestTimeout)
-		// w.Write([]byte("Request com tempo esgotado\n"))
+		log.Println("Request executado com sucesso")
 
 	case <-ctx.Done():
 		log.Println("Request cancelado pelo cliente")
-		// http.Error(w, "Request cancelado pelo cliente", http.StatusBadRequest)
 	}
 }
 
 
 func getDolarRate(ctx context.Context) (*USDBRL, error) {
-	// "jump of the cat"
 	ctx, cancel := context.WithTimeout(ctx, HTTP_TIMEOUT)
 	defer cancel()
 
@@ -82,7 +77,6 @@ func getDolarRate(ctx context.Context) (*USDBRL, error) {
 	defer rs.Body.Close()
 
 	body, err := ioutil.ReadAll(rs.Body)
-	log.Println("Body:", body)
 	if err != nil {
 		return nil, err
 	}

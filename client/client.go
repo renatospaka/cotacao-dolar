@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 500 * time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 350 * time.Millisecond)
 	defer cancel()
 
 	exchangeRate, err := getDolarRate(ctx)
