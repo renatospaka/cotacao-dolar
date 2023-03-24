@@ -52,8 +52,8 @@ func getDolarRate(ctx context.Context) (float32, error) {
 
 
 func saveRateToText(exchangeRate float32) error {
-	rate := strconv.FormatFloat(float64(exchangeRate), 'f', 2, 32) 
-	currentRate := "Dólar: {" + rate + "}"
+	rate := strconv.FormatFloat(float64(exchangeRate), 'f', 5, 32) 
+	currentRate := "Dólar: " + rate 
 
 	file, err := os.Create("cotacao.txt")
 	if err != nil {

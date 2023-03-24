@@ -35,6 +35,7 @@ type cotacao struct {
 
 func main() {
 	http.HandleFunc("/cotacao", getDolarRateHandler)
+	log.Println("Ouvindo requisições em :8080")
 	http.ListenAndServe(":8080", nil)
 }
 
@@ -50,7 +51,7 @@ func getDolarRateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = saveDolarRate(ctx, cotacao.USDBRL.VarBid)
+	err = saveDolarRate(ctx, cotacao.USDBRL.BID)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -97,6 +98,7 @@ func saveDolarRate(ctx context.Context, rate string) error {
 	ctx, cancel := context.WithTimeout(ctx, DB_TIMEOUT)
 	defer cancel()
 
+	// log.Println("Dólar:", rate)
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		return err
