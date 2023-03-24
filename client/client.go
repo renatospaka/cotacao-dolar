@@ -11,8 +11,10 @@ import (
 	"time"
 )
 
+const CLIENT_TIMEOUT = 500 * time.Millisecond
+
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 350 * time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), CLIENT_TIMEOUT)
 	defer cancel()
 
 	exchangeRate, err := getDolarRate(ctx)

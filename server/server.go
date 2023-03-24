@@ -12,16 +12,17 @@ import (
 )
 
 const (
-	HTTP_TIMEOUT = 200 * time.Millisecond
+	HTTP_TIMEOUT = 300 * time.Millisecond
 	DB_TIMEOUT   = 100 * time.Millisecond
 )
+
 
 type USDBRL struct {
 	USDBRL cotacao
 }
 type cotacao struct {
 	Code      string `json:"code"`
-	Codein    string `json:"codeIn"`
+	CodeIn    string `json:"codeIn"`
 	Name      string `json:"name"`
 	High      string `json:"highValue"`
 	Low       string `json:"lowValue"`
@@ -33,11 +34,13 @@ type cotacao struct {
 	CreatedAt string `json:"createdAt"`
 }
 
+
 func main() {
 	http.HandleFunc("/cotacao", getDolarRateHandler)
 	log.Println("Ouvindo requisições em :8080")
 	http.ListenAndServe(":8080", nil)
 }
+
 
 func getDolarRateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/cotacao" {
@@ -47,13 +50,16 @@ func getDolarRateHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	cotacao, err := getDolarRate(ctx)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = saveDolarRate(ctx, cotacao.USDBRL.BID)
 	if err != nil {
-		log.Panic(err)
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -68,6 +74,7 @@ func getDolarRateHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Request cancelado pelo cliente")
 	}
 }
+
 
 func getDolarRate(ctx context.Context) (*USDBRL, error) {
 	ctx, cancel := context.WithTimeout(ctx, HTTP_TIMEOUT)
@@ -94,12 +101,13 @@ func getDolarRate(ctx context.Context) (*USDBRL, error) {
 	return &cotacao, nil
 }
 
+
 func saveDolarRate(ctx context.Context, rate string) error {
 	ctx, cancel := context.WithTimeout(ctx, DB_TIMEOUT)
 	defer cancel()
 
 	// log.Println("Dólar:", rate)
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite3", "cotacao.db")
 	if err != nil {
 		return err
 	}
