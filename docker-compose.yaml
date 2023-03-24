@@ -10,3 +10,13 @@ services:
       - 8080:8000
     extra_hosts:
       - "host.docker.internal:172.17.0.1"
+
+  db:
+    image: mysql:5.7
+    container_name: db_cotacao
+    environment:
+      MYSQL_ROOT_PASSWORD: cotacao-root
+      MYSQL_DATABASE: cotacao
+      MYSQL_PASSWORD: cotacao-pwd
+    ports: 
+      - 3306:3306

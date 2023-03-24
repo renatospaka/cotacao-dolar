@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	_ "github.com/mattn/go-sqlite3"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 
 const (
 	HTTP_TIMEOUT = 200 * time.Millisecond
+	DB_TIMEOUT   = 100 * time.Millisecond
 )
 
 type USDBRL struct {
@@ -47,6 +50,11 @@ func getDolarRateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = saveDolarRate(ctx, cotacao.USDBRL.VarBid)
+	if err != nil {
+		log.Panic(err)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(cotacao.USDBRL.BID))
@@ -59,7 +67,6 @@ func getDolarRateHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Request cancelado pelo cliente")
 	}
 }
-
 
 func getDolarRate(ctx context.Context) (*USDBRL, error) {
 	ctx, cancel := context.WithTimeout(ctx, HTTP_TIMEOUT)
@@ -84,4 +91,36 @@ func getDolarRate(ctx context.Context) (*USDBRL, error) {
 	var cotacao USDBRL
 	_ = json.Unmarshal(body, &cotacao)
 	return &cotacao, nil
+}
+
+func saveDolarRate(ctx context.Context, rate string) error {
+	ctx, cancel := context.WithTimeout(ctx, DB_TIMEOUT)
+	defer cancel()
+
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		return err
+	}
+
+	query := `
+	DROP TABLE IF EXISTS cotacao;
+	CREATE TABLE cotacao(dolar TEXT);
+	`
+	_, err = db.ExecContext(ctx, query)
+	if err != nil {
+		return err
+	}
+
+	query = "INSERT INTO cotacao (dolar) VALUES (?)"
+	prep, err := db.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+
+	_, err = prep.ExecContext(ctx, rate)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
